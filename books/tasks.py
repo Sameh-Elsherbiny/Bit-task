@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.core.mail import EmailMessage, send_mail
 from django.conf import settings
 from .models import BorrowedBook
-from django.db.models import Q, ExpressionWrapper, F, DurationField
+from django.db.models import  ExpressionWrapper, F, DurationField
 
 huey = RedisHuey()
 

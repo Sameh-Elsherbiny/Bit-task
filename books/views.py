@@ -4,9 +4,15 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Book, Author, BorrowedBook
 from rest_framework.response import Response
 from django.db.models import Count, Q
-from .serializers import BookSerializer, AuthorSerializer, AuthorDetailSerializer, BorrowedBookSerializer
-from .filters import BookFilter, AuthorFilter , SimpleAuthorFilter
+from .serializers import (
+    BookSerializer,
+    AuthorSerializer,
+    AuthorDetailSerializer,
+    BorrowedBookSerializer,
+)
+from .filters import BookFilter, AuthorFilter, SimpleAuthorFilter
 from django_filters.rest_framework import DjangoFilterBackend
+from django.core.cache import cache
 
 
 class AuthorList(generics.ListAPIView):
@@ -17,9 +23,16 @@ class AuthorList(generics.ListAPIView):
     queryset = Author.objects.all()
 
     def get_queryset(self):
-        queryset = super().get_queryset()
         library = self.request.query_params.get("library")
         category = self.request.query_params.get("category")
+
+        cache_key = f"author_list"
+        cached_queryset = cache.get(cache_key)
+        if cached_queryset:
+            queryset = cached_queryset
+        else:
+            queryset = super().get_queryset()
+            cache.set(cache_key, queryset, 60 * 60 * 24 * 30)
 
         book_filter = Q()
         if library:
@@ -27,7 +40,8 @@ class AuthorList(generics.ListAPIView):
         if category:
             book_filter &= Q(books__category__name=category)
 
-        return queryset.annotate(book_count=Count("books", filter=book_filter))
+        queryset = queryset.annotate(book_count=Count("books", filter=book_filter))
+        return queryset
 
 
 class BookList(generics.ListAPIView):
@@ -36,13 +50,33 @@ class BookList(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     filterset_class = BookFilter
 
+    def get_queryset(self):
+        cache_key = f"book_list"
+        cached_queryset = cache.get(cache_key)
+        if cached_queryset:
+            queryset = cached_queryset
+        else:
+            queryset = super().get_queryset()
+            cache.set(cache_key, queryset, 60 * 60 * 24 * 30)
+        return queryset
+
 
 class AuthorDetailsList(generics.ListAPIView):
     serializer_class = AuthorDetailSerializer
-    permission_classes = [IsAuthenticated]  
+    permission_classes = [IsAuthenticated]
     queryset = Author.objects.prefetch_related("books__category")
-    # filter_backends = [DjangoFilterBackend]
-    # filterset_class = AuthorFilter
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = AuthorFilter
+
+    def get_queryset(self):
+        cache_key = f"author_details_list"
+        cached_queryset = cache.get(cache_key)
+        if cached_queryset:
+            queryset = cached_queryset
+        else:
+            queryset = super().get_queryset()
+            cache.set(cache_key, queryset, 60 * 60 * 24 * 30)
+        return queryset
 
 
 class BorrowedBookList(generics.ListCreateAPIView):

@@ -7,6 +7,7 @@ class Author(models.Model):
     name = models.CharField(max_length=100)
     bio = models.TextField()
     image = models.ImageField(upload_to="author_images", blank=True)
+    otp = models.CharField(max_length=6, blank=True, null=True)
 
     def __str__(self):
         return self.name

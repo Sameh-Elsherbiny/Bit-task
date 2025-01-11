@@ -2,7 +2,7 @@ from django.shortcuts import render
 from rest_framework import generics
 from rest_framework.views import APIView
 from .models import User , Category
-from .serializers import UserSerializer,CategorySerializer , LoginSerializer, VerifyOtpSerializer , ResetPasswordSerializer , ChangePasswordSerializer , LogoutSerializer
+from .serializers import UserSerializer,CategorySerializer ,SendOTPSerializer, LoginSerializer, VerifyOtpSerializer , ResetPasswordSerializer , ChangePasswordSerializer , LogoutSerializer
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -41,6 +41,7 @@ class VerifyOtpView(APIView):
         )
     
 class ResetPasswordView(APIView):
+    serializer_class = ResetPasswordSerializer
     def post(self, request):
         serializer = ResetPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -54,8 +55,9 @@ class ResetPasswordView(APIView):
         )
     
 class ChangePasswordView(APIView):
+    serializer_class = ChangePasswordSerializer
     def post(self, request):
-        serializer = ChangePasswordSerializer(data=request.data)
+        serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         return Response(
             {
@@ -66,15 +68,14 @@ class ChangePasswordView(APIView):
             status=status.HTTP_200_OK,
         )
     
-class LogoutView(APIView):
+
+class SendOTPView(APIView):
+    serializer_class = SendOTPSerializer
     def post(self, request):
-        serializer = LogoutSerializer(data=request.data)
+        serializer = SendOTPSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         return Response(
-            {
-                "message": "Logout successful",
-            },
-            status=status.HTTP_200_OK,
+            {"message": "OTP sent successfully"}, status=status.HTTP_200_OK
         )
     
 class CategoryView(generics.ListAPIView):

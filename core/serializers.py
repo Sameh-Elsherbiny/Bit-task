@@ -3,6 +3,8 @@ from django.utils.translation import gettext_lazy as _
 from django.contrib.auth import authenticate
 from .models import User , Category
 from .utils import create_token
+import pyotp
+from books.tasks import send_email
 
 class UserSerializer(serializers.ModelSerializer):
     confirm_password = serializers.CharField(write_only=True)
@@ -119,7 +121,7 @@ class ResetPasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError({"message": _("Passwords do not match")})
 
         user = User.objects.filter(email=email, is_active=True).first()
-        data["user"] = user
+        data["user"] = UserSerializer(user).data
         data["token"] = create_token(user)
         return data
 
@@ -145,14 +147,14 @@ class ChangePasswordSerializer(serializers.Serializer):
         if new_password != confirm_password:
             raise serializers.ValidationError({"message": _("Passwords do not match")})
 
-        user = self.context.get("user")
+        user = self.context.get("request").user
 
         if not user.check_password(old_password):
             raise serializers.ValidationError(
                 {"message": _("Old password is incorrect")}
             )
 
-        data["user"] = user
+        data["user"] = UserSerializer(user).data
         data["token"] = create_token(user)
         return data
 
@@ -172,6 +174,24 @@ class LogoutSerializer(serializers.Serializer):
 
     def save(self):
         return True
+    
+class SendOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    def validate(self, data):
+        email = data.get("email")
+        if not email:
+            raise serializers.ValidationError(_("Email is required"))
+        if not User.objects.filter(email=email).exists():
+            raise serializers.ValidationError(_("User not found"))
+        user = User.objects.get(email=email)
+        totp = pyotp.TOTP("base32secret3232")
+        otp = totp.now()
+        user.otp = otp
+        user.save()
+        data["user"] = UserSerializer(user).data 
+        data["token"] = create_token(user)
+        send_email(user.id, _("otp"))
+        return data
     
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:

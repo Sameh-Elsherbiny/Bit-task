@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import User , AbstractUser , BaseUserManager
+from django.contrib.auth.models import User, AbstractUser, BaseUserManager
 from django.utils.translation import gettext_lazy as _
 from django.contrib.gis.geos import Point
 from django.contrib.gis.db import models
@@ -8,7 +8,7 @@ from django.contrib.gis.db import models
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
-            raise ValueError('The Email field must be set')
+            raise ValueError(_('The Email field must be set'))
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
@@ -23,8 +23,8 @@ class UserManager(BaseUserManager):
     
 class User(AbstractUser):
     username = None
-    email = models.EmailField(unique=True)
-    location = models.PointField(blank=True, null=False,default=Point(0.0, 0.0))
+    email = models.EmailField(_('email address'), unique=True)
+    location = models.PointField(_('location'), blank=True, null=False, default=Point(0.0, 0.0))
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
     objects = UserManager()
@@ -33,9 +33,7 @@ class User(AbstractUser):
         return self.email
     
 class Category(models.Model):
-    name = models.CharField(max_length=100)
+    name = models.CharField(_('name'), max_length=100)
     
     def __str__(self):
         return self.name
-    
-

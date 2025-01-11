@@ -8,13 +8,12 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
 
-
 class AuthorSerializer(serializers.ModelSerializer):
     book_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Author
-        fields = ["id", "name", "book_count",'image','bio']
+        fields = ["id", "name", "book_count", "image", "bio"]
 
 
 class BookSerializer(serializers.ModelSerializer):
@@ -46,7 +45,15 @@ class BorrowedBookSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BorrowedBook
-        fields = ['id', 'book_id', 'status', 'borrowed_date', 'returned_date', 'overdue_days_penalty','user_id']
+        fields = [
+            "id",
+            "book_id",
+            "status",
+            "borrowed_date",
+            "returned_date",
+            "overdue_days_penalty",
+            "user_id",
+        ]
         read_only_fields = [
             "user_id",
             "id",
@@ -62,7 +69,7 @@ class BorrowedBookSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {
                     "message": _(
-                        "You cannot borrow more than 3 books or reruen one to borrow another"
+                        "You cannot borrow more than 3 books or return one to borrow another"
                     )
                 }
             )
@@ -96,11 +103,11 @@ class BorrowedBookSerializer(serializers.ModelSerializer):
         user = self.context["request"].user
         branch_book = BorrowedBook.objects.create(**validated_data)
         branch_book.book.quantity -= 1
-        send_email(user.id, "borrowing")
+        send_email(user.id, _("borrowing"))
         return branch_book
 
     def update(self, instance, validated_data):
-        instance.status = "returned"
+        instance.status = _("returned")
         if instance.returned_date < timezone.now():
             instance.overdue_days_penalty = (
                 (timezone.now() - instance.returned_date).days
@@ -108,18 +115,21 @@ class BorrowedBookSerializer(serializers.ModelSerializer):
         instance.save()
         instance.book.quantity += 1
         instance.book.save()
-        send_email(instance.user.id, "returning")
-        send_notification_to_user(instance.user.id, "You have successfully returned a book")
+        send_email(instance.user.id, _("returning"))
+        send_notification_to_user(
+            instance.user.id, _("You have successfully returned a book")
+        )
         return instance
-    
+
+
 def send_notification_to_user(user_id, message):
     channel_layer = get_channel_layer()
     group_name = f"user_{user_id}"
-    
+
     async_to_sync(channel_layer.group_send)(
         group_name,
         {
             "type": "send_notification",
             "message": message,
-        }
+        },
     )

@@ -1,10 +1,11 @@
 from django.shortcuts import render
 from rest_framework import generics
 from rest_framework.views import APIView
-from .models import User
-from .serializers import UserSerializer, LoginSerializer, VerifyOtpSerializer , ResetPasswordSerializer , ChangePasswordSerializer , LogoutSerializer
+from .models import User , Category
+from .serializers import UserSerializer,CategorySerializer , LoginSerializer, VerifyOtpSerializer , ResetPasswordSerializer , ChangePasswordSerializer , LogoutSerializer
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 
 
 class UserCreateView(generics.CreateAPIView):
@@ -12,6 +13,7 @@ class UserCreateView(generics.CreateAPIView):
 
 
 class LoginView(APIView):
+    serializer_class = LoginSerializer
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -74,3 +76,13 @@ class LogoutView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+    
+class CategoryView(generics.ListAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return Category.objects.all().order_by('name')
+    
+   

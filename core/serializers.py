@@ -1,8 +1,39 @@
 from rest_framework import serializers
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth import authenticate
-from .models import User
+from .models import User , Category
 from .utils import create_token
+
+class UserSerializer(serializers.ModelSerializer):
+    confirm_password = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ["id", "email", "password",'confirm_password']
+        extra_kwargs = {
+            "password": {"write_only": True},
+            "email": {"required": True},
+            "image": {"required": False},
+        }
+
+    def create(self, validated_data):
+        if user := User.objects.filter(email=validated_data.get("email")).first():
+            raise serializers.ValidationError({"message": _("Email already exists")})
+        password = validated_data.pop("password")
+        confirm_password = validated_data.get("confirm_password")
+        if password != confirm_password:
+            raise serializers.ValidationError({"message": _("Passwords do not match")})
+        user = User.objects.create(**validated_data)
+        user.save()
+        user.set_password(password)
+        return user
+
+    def update(self, instance, validated_data):
+        if "password" in validated_data:
+            validated_data.pop("password")
+        if "email" in validated_data:
+            validated_data.pop("email")
+        return super().update(instance, validated_data)
 
 
 class LoginSerializer(serializers.Serializer):
@@ -28,7 +59,7 @@ class LoginSerializer(serializers.Serializer):
             }
             raise serializers.ValidationError(data)
 
-        data["user"] = user
+        data["user"] = UserSerializer(user).data
         data["token"] = create_token(user)
         return data
 
@@ -133,38 +164,6 @@ class ChangePasswordSerializer(serializers.Serializer):
         return user
 
 
-class UserSerializer(serializers.ModelSerializer):
-    confirm_password = serializers.CharField(write_only=True)
-
-    class Meta:
-        model = User
-        fields = ["id", "email", "password", "image"]
-        extra_kwargs = {
-            "password": {"write_only": True},
-            "email": {"required": True},
-            "image": {"required": False},
-        }
-
-    def create(self, validated_data):
-        if user := User.objects.filter(email=validated_data.get("email")).first():
-            raise serializers.ValidationError({"message": _("Email already exists")})
-        password = validated_data.pop("password")
-        confirm_password = validated_data.get("confirm_password")
-        if password != confirm_password:
-            raise serializers.ValidationError({"message": _("Passwords do not match")})
-        user = User.objects.create(**validated_data)
-        user.save()
-        user.set_password(password)
-        return user
-
-    def update(self, instance, validated_data):
-        if "password" in validated_data:
-            validated_data.pop("password")
-        if "email" in validated_data:
-            validated_data.pop("email")
-        return super().update(instance, validated_data)
-
-
 class LogoutSerializer(serializers.Serializer):
 
     def validate(self, attrs):
@@ -173,3 +172,8 @@ class LogoutSerializer(serializers.Serializer):
 
     def save(self):
         return True
+    
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = '__all__'

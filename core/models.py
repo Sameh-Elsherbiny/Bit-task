@@ -1,5 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User , AbstractUser , BaseUserManager
+from django.utils.translation import gettext_lazy as _
+from django.contrib.gis.geos import Point
+from django.contrib.gis.db import models
 
 # Create your models here.
 class UserManager(BaseUserManager):
@@ -21,11 +24,18 @@ class UserManager(BaseUserManager):
 class User(AbstractUser):
     username = None
     email = models.EmailField(unique=True)
+    location = models.PointField(blank=True, null=False,default=Point(0.0, 0.0))
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
     objects = UserManager()
 
     def __str__(self):
         return self.email
+    
+class Category(models.Model):
+    name = models.CharField(max_length=100)
+    
+    def __str__(self):
+        return self.name
     
 
